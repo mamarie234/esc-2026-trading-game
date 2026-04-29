@@ -836,10 +836,10 @@ function toggleCollection() {
   collectionCollapsed = !collectionCollapsed;
 
   if (collectionCollapsed) {
-    wrapper.classList.add("collapsed");
-    arrow.textContent = "▲";
+    wrapper.style.maxHeight = "0px";
+    arrow.textContent = "▶";
   } else {
-    wrapper.classList.remove("collapsed");
+    wrapper.style.maxHeight = wrapper.scrollHeight + "px";
     arrow.textContent = "▼";
   }
 }
