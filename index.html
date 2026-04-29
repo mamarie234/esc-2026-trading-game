@@ -441,13 +441,19 @@ function render() {
 
 	  // 🔥 Karte auswählbar machen
 	  div.onclick = () => {
-		selectedCardIndex = entry.firstIndex;
-		render();
-	  };
+  if (selectedCardIndex === entry.firstIndex) {
+    selectedCardIndex = null; // deselect if tapped again
+  } else {
+    selectedCardIndex = entry.firstIndex;
+  }
+
+  render();
+};
 
 	  // 🔥 Auswahl hervorheben
 	  if (selectedCardIndex === entry.firstIndex) {
 		div.style.border = "3px solid red";
+		div.style.boxShadow = "0 0 15px red";
 	  }
 
 	  col.appendChild(div);
