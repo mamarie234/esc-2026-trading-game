@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html>
+<meta charset="UTF-8">
+<head>
+  <title>Eurovision Pocket: Chaos Edition</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <div id="bonusPopup" style="
+  display:none;
+  pointer-events:auto;
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%, -50%);
+  background:#222;
+  padding:20px;
+  border:5px solid gold;
+  border-radius:15px;
+  box-shadow:0 0 25px gold;
+  z-index:9999;
+  text-align:center;
+  color:white;
+  font-size:18px;
+  max-width:300px;
+">
+  <div id="bonusPopupText"></div>
+  
+  <button class="popupBtn" onclick="closeBonusPopup()" style="
+  margin-top:15px;
+  padding:8px 16px;
+  background:gold;
+  border:none;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+">OK</button>
+</div>
+
+  <style>
+    body {
+   font-family: system-ui, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  margin: 0;
+  background: #111;
+  color: #fff;
+  text-align: center;
+}
+
+h1 {
+  font-size: 22px;
+  margin: 15px;
+}
+
+button {
+  font-size: 18px;
+  padding: 14px;
+  margin: 10px;
+  width: 90%;
+  max-width: 400px;
+  border-radius: 10px;
+  border: none;
+}
+
+#pack, #collection {
+  display: grid;
+  grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 10px;
+}
+
+.card {
+  border-radius: 12px;
+  padding: 10px;
+  background: #000;
+  color: #fff;
+  text-align: left;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  transition: transform 0.2s ease;
+  height: auto;
+  margin-bottom: 20px;
+
+}
+
+.card:hover {
+  transform: scale(1.05);
+}
+
+
+.common { border: 2px solid gray; }
+.rare { border: 2px solid cyan; }
+.legendary { border: 2px solid gold; }
+
+
+
+.back {
+  background: #333;
+  color: #aaa;
+}
+
+#timer {
+  font-size: 16px;
+  margin: 10px;
+}
+
+input {
+  padding: 12px;
+  font-size: 16px;
+  width: 80%;
+  border-radius: 8px;
+  border: none;
+}
+@media (min-width: 600px) {
+  #pack, #collection {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+#collectionWrapper {
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+  max-height: 2000px; /* groß genug für volle Sammlung */
+}
+
+#collectionWrapper.collapsed {
+  max-height: 0;
+}
+.cardImage {
+  width: 100%;
+  max-width: 250px;
+  height: auto;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto 8px auto;
+}
+
+
+  </style>
+</head>
+<body>
+
+<h1>🔥 Eurovision Pocket: CHAOS EDITION</h1>
+
+<button id="drawButton" onclick="draw()">🎴 PACK ÖFFNEN</button>
+<div id="timer" style="margin:10px; font-size:18px;"></div>
+
+<div id="pack"></div>
+
+
+<h2 onclick="toggleCollection()" style="cursor:pointer;">
+
+  📦 Deine Sammlung <span id="collectionArrow">▼</span>
+</h2>
+
+<select id="sortSelect" onchange="render()" style="padding:10px; font-size:16px; border-radius:8px;">
+  <option value="name">Sortieren nach Name</option>
+  <option value="country">Sortieren nach Land</option>
+  <option value="count">Sortieren nach Anzahl</option>
+  <option value="year">Sortieren nach Jahr</option>
+</select>
+
+<div id="collectionWrapper">
+  <div id="collection"></div>
+</div>
+
+<h2>🔁 Trade</h2>
+
+<button onclick="generateTrade()">Code für Karte erstellen</button>
+
+<br><br>
+
+<input id="tradeInput" placeholder="Code eingeben">
+<button onclick="importTrade()">Importieren</button>
+
+<div id="tradeStatus" style="margin-top:10px;"></div>
+
+<div id="tradeCodeBox" 
+     style="display:none; background:#222; padding:10px; border-radius:8px; 
+            font-size:14px; word-break:break-all; max-height:80px; overflow:auto;">
+</div>
+
+<button id="copyBtn" onclick="copyTradeCode()" style="display:none; margin-top:10px;">
+📋 Code kopieren
+</button>
+
+
+<h2>⚡ Aktive Chaos-Boni</h2>
+
+<div id="combos"></div>
+<p>🇫🇷 🇩🇪 🇬🇧 🇮🇹 🇪🇸</p>
+
+<script>
+const cards = [
+
+{name:"The Tower", artist:"Luna", country:"Poland", year:2024, category:"pop", rarity:"special", flag:"🇵🇱", image:"./img/luna.png"},
+{name:"Hard Rock Hallelujah", artist:"Lordi", country:"Finland", year:2006, category:"rock", rarity:"legendary", flag:"🇫🇮", image:"./img/finland06.png"},
+{name:"Molitva", artist:"Marija Šerifović", country:"Serbia", year:2007, category:"ballad", rarity:"legendary", flag:"🇷🇸", image:"./img/serbia07.png"},
+{name:"Believe", artist:"Dima Bilan", country:"Russia", year:2008, category:"pop", rarity:"legendary", flag:"🇷🇺", image:"./img/russia08.png"},
+{name:"Fairytale", artist:"Alexander Rybak", country:"Norway", year:2009, category:"folk", rarity:"legendary", flag:"🇳🇴", image:"./img/norway09.png"},
+{name:"Satellite", artist:"Lena", country:"Germany", year:2010, category:"pop", rarity:"legendary", flag:"🇩🇪", image:"./img/germany10.png"},
+{name:"Running Scared", artist:"Ell & Nikki", country:"Azerbaijan", year:2011, category:"ballad", rarity:"legendary", flag:"🇦🇿", image:"./img/azerbaijan11.png"},
+{name:"Euphoria", artist:"Loreen", country:"Sweden", year:2012, category:"electro", rarity:"legendary", flag:"🇸🇪", image:"./img/sweden12.png"},
+{name:"Only Teardrops", artist:"Emmelie de Forest", country:"Denmark", year:2013, category:"folk", rarity:"legendary", flag:"🇩🇰", image:"./img/denmark13.png"},
+{name:"Rise Like a Phoenix", artist:"Conchita Wurst", country:"Austria", year:2014, category:"ballad", rarity:"legendary", flag:"🇦🇹", image:"./img/austria14.png"},
+{name:"Heroes", artist:"Måns Zelmerlöw", country:"Sweden", year:2015, category:"electro", rarity:"legendary", flag:"🇸🇪", image:"./img/sweden15.png"},
+{name:"1944", artist:"Jamala", country:"Ukraine", year:2016, category:"ballad", rarity:"legendary", flag:"🇺🇦", image:"./img/ukraine16.png"},
+{name:"Amar pelos dois", artist:"Salvador Sobral", country:"Portugal", year:2017, category:"ballad", rarity:"legendary", flag:"🇵🇹", image:"./img/portugal17.png"},
+{name:"Toy", artist:"Netta", country:"Israel", year:2018, category:"chaos", rarity:"legendary", flag:"🇮🇱", image:"./img/israel18.png"},
+{name:"Arcade", artist:"Duncan Laurence", country:"Netherlands", year:2019, category:"ballad", rarity:"legendary", flag:"🇳🇱", image:"./img/netherlands19.png"},
+{name:"Zitti e buoni", artist:"Måneskin", country:"Italy", year:2021, category:"rock", rarity:"legendary", flag:"🇮🇹", image:"./img/italy21.png"},
+{name:"Stefania", artist:"Kalush Orchestra", country:"Ukraine", year:2022, category:"folk", rarity:"legendary", flag:"🇺🇦", image:"./img/ukraine22.png"},
+{name:"Tattoo", artist:"Loreen", country:"Sweden", year:2023, category:"electro", rarity:"legendary", flag:"🇸🇪", image:"./img/sweden23.png"},
+{name:"The Code", artist:"Nemo", country:"Switzerland", year:2024, category:"chaos", rarity:"legendary", flag:"🇨🇭", image:"./img/switzerland24.png"},
+{name:"Wasted Love", artist:"JJ", country:"Austria", year:2025, category:"ballad", rarity:"legendary", flag:"🇦🇹", image:"./img/austria25.png"},
+  
+{name:"Nân", artist:"Alis", country:"Albania", year:2026, category:"ballad", rarity:"common", flag:"🇦🇱", image:"./img/albania.png"},
+{name:"Paloma Rumba", artist:"SIMÓN", country:"Armenia", year:2026, category:"folk", rarity:"common", flag:"🇦🇲", image:"./img/armenia.png"},
+{name:"Eclipse", artist:"Delta Goodrem", country:"Australia", year:2026, category:"ballad", rarity:"rare", flag:"🇦🇺", image:"./img/australia.png"},
+{name:"Tanzschein", artist:"COSMÓ", country:"Austria", year:2026, category:"electro", rarity:"rare", flag:"🇦🇹", image:"./img/austria.png"},
+{name:"Just Go", artist:"JIVA", country:"Azerbaijan", year:2026, category:"pop", rarity:"common", flag:"🇦🇿", image:"./img/azerbaijan.png"},
+{name:"Dancing on the Ice", artist:"Essyla", country:"Belgium", year:2026, category:"electro", rarity:"common", flag:"🇧🇪", image:"./img/belgium.png"},
+{name:"Bangaranga", artist:"DARA", country:"Bulgaria", year:2026, category:"chaos", rarity:"rare", flag:"🇧🇬", image:"./img/bulgaria.png"},
+{name:"Andromeda", artist:"LELEK", country:"Croatia", year:2026, category:"pop", rarity:"common", flag:"🇭🇷", image:"./img/croatia.png"},
+{name:"Jalla", artist:"Antigoni", country:"Cyprus", year:2026, category:"chaos", rarity:"common", flag:"🇨🇾", image:"./img/cyprus.png"},
+{name:"Crossroads", artist:"Daniel Zizka", country:"Czechia", year:2026, category:"ballad", rarity:"common", flag:"🇨🇿", image:"./img/czechia.png"},
+{name:"Før vi går hjem", artist:"Søren Torpegaard Lund", country:"Denmark", year:2026, category:"ballad", rarity:"common", flag:"🇩🇰", image:"./img/denmark.png"},
+{name:"Too Epic to Be True", artist:"Vanilla Ninja", country:"Estonia", year:2026, category:"chaos", rarity:"rare", flag:"🇪🇪", image:"./img/estonia.png"},
+{name:"Liekinheitin", artist:"Linda Lampenius x Pete Parkkonen", country:"Finland", year:2026, category:"rock", rarity:"rare", flag:"🇫🇮", image:"./img/finland.png"},
+{name:"Regarde !", artist:"Monroe", country:"France", year:2026, category:"ballad", rarity:"rare", flag:"🇫🇷", image:"./img/france.png"},
+{name:"On Replay", artist:"Bzikebi", country:"Georgia", year:2026, category:"folk", rarity:"common", flag:"🇬🇪", image:"./img/georgia.png"},
+{name:"Fire", artist:"Sarah Engels", country:"Germany", year:2026, category:"rock", rarity:"rare", flag:"🇩🇪", image:"./img/germany.png"},
+{name:"Ferto", artist:"Akylas", country:"Greece", year:2026, category:"pop", rarity:"common", flag:"🇬🇷", image:"./img/greece.png"},
+{name:"Per sempre sì", artist:"Sal Da Vinci", country:"Italy", year:2026, category:"ballad", rarity:"rare", flag:"🇮🇹", image:"./img/italy.png"},
+{name:"Michelle", artist:"Noam Bettam", country:"Israel", year:2026, category:"ballad", rarity:"rare", flag:"🇮🇱", image:"./img/israel.png"},
+{name:"Ēnā", artist:"Atvara", country:"Latvia", year:2026, category:"ballad", rarity:"common", flag:"🇱🇻", image:"./img/latvia.png"},
+{name:"Sólo Quiero Más", artist:"Lion Ceccah", country:"Lithuania", year:2026, category:"ballad", rarity:"rare", flag:"🇱🇹", image:"./img/lithuania.png"},
+{name:"Mother Nature", artist:"Eva Marija", country:"Luxembourg", year:2026, category:"ballad", rarity:"common", flag:"🇱🇺", image:"./img/luxembourg.png"},
+{name:"Bella", artist:"AIDAN", country:"Malta", year:2026, category:"ballad", rarity:"common", flag:"🇲🇹", image:"./img/malta.png"},
+{name:"My System", artist:"FELICIA", country:"Sweden", year:2026, category:"electro", rarity:"rare", flag:"🇸🇪", image:"./img/sweden.png"},
+{name:"Eins, Zwei, Drei", artist:"LOOK MUM NO COMPUTER", country:"United Kingdom", year:2026, category:"chaos", rarity:"rare", flag:"🇬🇧", image:"./img/united_kingdom.png"},
+{name:"Viva, Moldova!", artist:"Satoshi", country:"Moldova", year:2026, category:"chaos", rarity:"rare", flag:"🇲🇩", image:"./img/moldova.png"},
+{name:"Rosa", artist:"Bandidos do Cante", country:"Portugal", year:2026, category:"ballad", rarity:"common", flag:"🇵🇹", image:"./img/portugal.png"},
+{name:"Superstar", artist:"SENHIT", country:"San Marino", year:2026, category:"pop", rarity:"rare", flag:"🇸🇲", image:"./img/san_marino.png"},
+{name:"Kraj Mene", artist:"Lavina", country:"Serbia", year:2026, category:"ballad", rarity:"common", flag:"🇷🇸", image:"./img/serbia.png"},
+{name:"Pray", artist:"Alicja", country:"Poland", year:2026, category:"ballad", rarity:"common", flag:"🇵🇱", image:"./img/poland.png"},
+{name:"Mother Nature", artist:"Juliette Blanc", country:"Luxembourg", year:2026, category:"ballad", rarity:"rare", flag:"🇱🇺", image:"./img/luxembourg.png"},
+{name:"Nova zora", artist:"Tamara Živković", country:"Montenegro", year:2026, category:"folk", rarity:"common", flag:"🇲🇪", image:"./img/montenegro.png"},
+{name:"Choke Me", artist:"Alexandra Căpitănescu", country:"Romania", year:2026, category:"rock", rarity:"rare", flag:"🇷🇴", image:"./img/romania.png"},
+{name:"Ya Ya Ya", artist:"Jonas Lovv", country:"Norway", year:2026, category:"electro", rarity:"common", flag:"🇳🇴", image:"./img/norway.png"},
+{name:"Alice", artist:"Veronica Fusaro", country:"Switzerland", year:2026, category:"ballad", rarity:"common", flag:"🇨🇭", image:"./img/switzerland.png"},
+{name:"Ridnym", artist:"LELÉKA", country:"Ukraine", year:2026, category:"folk", rarity:"common", flag:"🇺🇦", image:"./img/ukraine.png"},
+
+{name:"Zjerm", artist:"Shkodra Elektronike", country:"Albania", year:2025, category:"folk", rarity:"rare", flag:"🇦🇱", image:"./img/albania25.png"},
+{name:"Survivor", artist:"PARG", country:"Armenia", year:2025, category:"pop", rarity:"rare", flag:"🇦🇲", image:"./img/armenia25.png"},
+{name:"Milkshake Man", artist:"Go-Jo", country:"Australia", year:2025, category:"pop", rarity:"common", flag:"🇦🇺", image:"./img/australia25.png"},
+{name:"Run With U", artist:"Mamagama", country:"Azerbaijan", year:2025, category:"pop", rarity:"common", flag:"🇦🇿", image:"./img/azerbaijan25.png"},
+{name:"Strobe Lights", artist:"Red Sebastian", country:"Belgium", year:2025, category:"pop", rarity:"common", flag:"🇧🇪", image:"./img/belgium25.png"},
+{name:"Poison Cake", artist:"Marko Bošnjak", country:"Croatia", year:2025, category:"chaos", rarity:"rare", flag:"🇭🇷", image:"./img/croatia25.png"},
+{name:"Shh", artist:"Theo Evan", country:"Cyprus", year:2025, category:"pop", rarity:"common", flag:"🇨🇾", image:"./img/cyprus25.png"},
+{name:"Kiss Kiss Goodbye", artist:"ADONXS", country:"Czechia", year:2025, category:"pop", rarity:"common", flag:"🇨🇿", image:"./img/czechia25.png"},
+{name:"Hallucination", artist:"Sissal", country:"Denmark", year:2025, category:"electro", rarity:"rare", flag:"🇩🇰", image:"./img/denmark25.png"},
+{name:"Espresso Macchiato", artist:"Tommy Cash", country:"Estonia", year:2025, category:"chaos", rarity:"rare", flag:"🇪🇪", image:"./img/estonia25.png"},
+{name:"ICH KOMME", artist:"Erika Vikman", country:"Finland", year:2025, category:"rock", rarity:"rare", flag:"🇫🇮", image:"./img/finland25.png"},
+{name:"maman", artist:"Louane", country:"France", year:2025, category:"ballad", rarity:"rare", flag:"🇫🇷", image:"./img/france25.png"},
+{name:"Freedom", artist:"Mariam Shengelia", country:"Georgia", year:2025, category:"ballad", rarity:"common", flag:"🇬🇪", image:"./img/georgia25.png"},
+{name:"Baller", artist:"Abor & Tynna", country:"Germany", year:2025, category:"electro", rarity:"rare", flag:"🇩🇪", image:"./img/germany25.png"},
+{name:"Asteromáta", artist:"Klavdia", country:"Greece", year:2025, category:"ballad", rarity:"common", flag:"🇬🇷", image:"./img/greece25.png"},
+{name:"RÓA", artist:"VÆB", country:"Iceland", year:2025, category:"folk", rarity:"common", flag:"🇮🇸", image:"./img/iceland25.png"},
+{name:"Laika Party", artist:"EMMY", country:"Ireland", year:2025, category:"electro", rarity:"common", flag:"🇮🇪", image:"./img/ireland25.png"},
+{name:"New Day Will Rise", artist:"Yuval Raphael", country:"Israel", year:2025, category:"ballad", rarity:"common", flag:"🇮🇱", image:"./img/israel25.png"},
+{name:"Volevo essere un duro", artist:"Lucio Corsi", country:"Italy", year:2025, category:"ballad", rarity:"rare", flag:"🇮🇹", image:"./img/italy25.png"},
+{name:"Bur man laimi", artist:"Tautumeitas", country:"Latvia", year:2025, category:"folk", rarity:"common", flag:"🇱🇻", image:"./img/latvia25.png"},
+{name:"Tavo akys", artist:"Katarsis", country:"Lithuania", year:2025, category:"pop", rarity:"common", flag:"🇱🇹", image:"./img/lithuania25.png"},
+{name:"La poupée monte le son", artist:"Laura Thorn", country:"Luxembourg", year:2025, category:"pop", rarity:"common", flag:"🇱🇺", image:"./img/luxembourg25.png"},
+{name:"Serving", artist:"Miriana Conte", country:"Malta", year:2025, category:"pop", rarity:"common", flag:"🇲🇹", image:"./img/malta25.png"},
+{name:"Dobrodošli", artist:"Nina Žižić", country:"Montenegro", year:2025, category:"chaos", rarity:"common", flag:"🇲🇪", image:"./img/montenegro25.png"},
+{name:"Lighter", artist:"Kyle Alessandro", country:"Norway", year:2025, category:"pop", rarity:"common", flag:"🇳🇴", image:"./img/norway25.png"},
+{name:"Gaja", artist:"Justyna Steczkowska", country:"Poland", year:2025, category:"ballad", rarity:"rare", flag:"🇵🇱", image:"./img/poland25.png"},
+{name:"Deslocado", artist:"Napa", country:"Portugal", year:2025, category:"ballad", rarity:"common", flag:"🇵🇹", image:"./img/portugal25.png"},
+{name:"Tutta l'Italia", artist:"Gabry Ponte", country:"San Marino", year:2025, category:"chaos", rarity:"rare", flag:"🇸🇲", image:"./img/san_marino25.png"},
+{name:"Mila", artist:"Princ", country:"Serbia", year:2025, category:"pop", rarity:"common", flag:"🇷🇸", image:"./img/serbia25.png"},
+{name:"How much time do we have left", artist:"Klemen", country:"Slovenia", year:2025, category:"ballad", rarity:"common", flag:"🇸🇮", image:"./img/slovenia25.png"},
+{name:"ESA DIVA", artist:"Melody", country:"Spain", year:2025, category:"pop", rarity:"common", flag:"🇪🇸", image:"./img/spain25.png"},
+{name:"Bara Bada Bastu", artist:"KAJ", country:"Sweden", year:2025, category:"chaos", rarity:"rare", flag:"🇸🇪", image:"./img/sweden25.png"},
+{name:"Voyage", artist:"Zoë Më", country:"Switzerland", year:2025, category:"ballad", rarity:"common", flag:"🇨🇭", image:"./img/switzerland25.png"},
+{name:"C'est La Vie", artist:"Claude", country:"Netherlands", year:2025, category:"ballad", rarity:"rare", flag:"🇳🇱", image:"./img/netherlands25.png"},
+{name:"Bird of Pray", artist:"Ziferblat", country:"Ukraine", year:2025, category:"ballad", rarity:"common", flag:"🇺🇦", image:"./img/ukraine25.png"},
+{name:"What The Hell Just Happened?", artist:"Remember Monday", country:"United Kingdom", year:2025, category:"pop", rarity:"rare", flag:"🇬🇧", image:"./img/united_kingdom25.png"}
+
+];
+
+const allCards = cards; // deine globale Liste umbenennen
+
+let selectedCardIndex = null;
+let collection = JSON.parse(localStorage.getItem("esc")) || [];
+let unlockedCombos = JSON.parse(localStorage.getItem("unlockedCombos") || "[]");
+
+
+function draw() {
+  let now = Date.now();
+  let lastOpen = localStorage.getItem("lastPackTime");
+
+  // ⏱️ Cooldown
+  if (lastOpen && now - lastOpen < 60 * 60 * 1000) {
+    updateTimer();
+    return;
+  }
+
+  localStorage.setItem("lastPackTime", now);
+
+  let pack = document.getElementById("pack");
+
+  // 🔥 WICHTIG: komplett sauber leeren
+  pack.innerHTML = "";
+
+  let drawnCards = [];
+  let cardDivs = [];
+
+  // 🎴 exakt 3 Karten erzeugen
+  for (let i = 0; i < 3; i++) {
+    let card = getRandomCard();
+    drawnCards.push(card);
+
+    // Sammlung speichern
+    collection.push(card);
+
+    let div = document.createElement("div");
+    div.className = "card back";
+    div.innerText = "🎴 PACK";
+
+    pack.appendChild(div);
+    cardDivs.push(div);
+  }
+
+  localStorage.setItem("esc", JSON.stringify(collection));
+
+  // ✨ Reveal
+  cardDivs.forEach((div, i) => {
+    setTimeout(() => {
+      let card = drawnCards[i];
+
+      div.className = "card " + card.rarity;
+      div.innerHTML = `
+		  <img src="${card.image}" class="cardImage">
+
+		  <div style="font-size:14px; opacity:0.9; margin-top:4px; font-weight: bold;">
+		    ${card.name} 
+		  </div>
+		  <div style="font-size:14px; opacity:0.9; margin-top:0px;">
+			${card.artist}
+		  </div>
+		   <div style="font-size:14px; opacity:0.9; margin-top:0px;">
+			${card.country} ${card.flag} (${card.year})
+			</div>
+		`;
+
+      if (card.rarity === "legendary") {
+        div.style.transform = "scale(1.15)";
+        div.style.boxShadow = "0 0 20px gold";
+        legendaryEffect();
+      }
+
+    }, 700 * (i + 1));
+  });
+  console.log("Cards drawn:", drawnCards.length);
+
+  // ⏳ Erst rendern, wenn alle Karten gezeigt wurden
+	setTimeout(() => {
+	  render();
+	}, 700 * (drawnCards.length + 1));
+
+}
+
+function render() {
+  let col = document.getElementById("collection");
+  col.innerHTML = "";
+
+  // 🔥 Karten gruppieren (Duplikate zusammenfassen)
+	let grouped = {};
+
+	collection.forEach((card, index) => {
+	  let key = card.name;
+
+	  if (!grouped[key]) {
+		grouped[key] = { card: card, count: 0, firstIndex: index };
+	  }
+
+	  grouped[key].count++;
+	});
+
+
+  // 🔥 Sortierung auswählen
+  let sortMode = document.getElementById("sortSelect").value;
+
+  let sorted = Object.values(grouped);
+
+  if (sortMode === "name") {
+    sorted.sort((a, b) => a.card.name.localeCompare(b.card.name));
+  }
+
+  if (sortMode === "country") {
+    sorted.sort((a, b) => a.card.country.localeCompare(b.card.country));
+  }
+
+  if (sortMode === "count") {
+    sorted.sort((a, b) => b.count - a.count);
+  }
+
+  if (sortMode === "year") {
+    sorted.sort((a, b) => a.card.year - b.card.year);
+  }
+
+  // 🔥 Ausgabe
+	sorted.forEach(entry => {
+	  let c = entry.card;
+
+	  let div = document.createElement("div");
+	  div.className = "card " + c.rarity;
+
+	  div.innerHTML = `
+		  <img src="${c.image}" class="cardImage">
+
+		  <div style="font-size:14px; opacity:0.9; margin-top:4px; font-weight: bold;">
+		    ${c.name} 
+		  </div>
+		  <div style="font-size:14px; opacity:0.9; margin-top:0px;">
+			${c.artist}
+		  </div>
+		   <div style="font-size:14px; opacity:0.9; margin-top:0px;">
+			${c.country} ${c.flag} (${c.year})
+			</div>
+		  <div style="font-size:12px; opacity:0.7;">
+			Anzahl: ${entry.count}
+		  </div>
+		`;
+
+
+	  // 🔥 Karte auswählbar machen
+	  div.onclick = () => {
+		selectedCardIndex = entry.firstIndex;
+		render();
+	  };
+
+	  // 🔥 Auswahl hervorheben
+	  if (selectedCardIndex === entry.firstIndex) {
+		div.style.border = "3px solid red";
+	  }
+
+	  col.appendChild(div);
+	});
+
+
+  checkCombos();
+}
+
+const comboList = [
+  {
+    id: "chaos3",
+    name: "🔥 FULL CHAOS MODE ACTIVATED",
+    description: "Sammle 10 Chaos‑Karten. 🔥🌀",
+    check: cards => cards.filter(c => c.category === "chaos").length >= 10,
+    missing: cards => {
+      let have = cards.filter(c => c.category === "chaos").length;
+      return `Du hast ${have}/10 Chaos‑Karten 🔥`;
+    }
+  },
+  {
+    id: "nordic",
+    name: "❄️ NORDIC DOMINATION",
+    description: "Sammle Schweden 🇸🇪, Norwegen 🇳🇴 und Finnland 🇫🇮.",
+    check: cards => ["Sweden","Norway","Finland"].every(c => cards.map(x=>x.country).includes(c)),
+    missing: cards => {
+      let need = ["Sweden","Norway","Finland"];
+      let have = cards.map(c => c.country);
+      let missing = need.filter(n => !have.includes(n));
+      return missing.length === 0 ? "Komplett! ❄️" : "Fehlt: " + missing.join(", ");
+    }
+  },
+  {
+    id: "decade_winners",
+    name: "🏆 DECADE CHAMPION",
+    description: "Mindestens 5 Karten aus den Jahren 2016–2025. 🏅",
+    check: cards => cards.filter(c => c.year >= 2016 && c.year <= 2025).length >= 5,
+    missing: cards => {
+      let have = cards.filter(c => c.year >= 2016 && c.year <= 2025).length;
+      return `Du hast ${have}/5 Karten aus 2016–2025 🏆`;
+    }
+  },
+  {
+    id: "final2025",
+    name: "🎤 FINAL FEVER 2025",
+    description: "Sammle 10 Finalisten aus 2025. 🔥",
+    check: cards => cards.filter(c => c.year === 2025).length >= 10,
+    missing: cards => {
+      let have = cards.filter(c => c.year === 2025).length;
+      return `Du hast ${have}/10 Finalisten 2025 🎤`;
+    }
+  },
+  {
+  id: "full2026",
+  name: "🚀 ESC 2026 COLLECTION",
+  description: "Sammle ALLE Teilnehmer aus 2026. 🌍",
+
+  check: cards => {
+    // Alle 2026-Karten im Spiel
+    let all2026 = allCards.filter(c => c.year === 2026);
+
+    // Welche 2026-Karten der Spieler hat
+    let have = cards.filter(c => c.year === 2026);
+
+    // Prüfen, ob jede Karte mindestens einmal vorhanden ist
+    return all2026.every(card =>
+      have.some(h => h.name === card.name)
+    );
+  },
+
+  missing: cards => {
+    let all2026 = allCards.filter(c => c.year === 2026);
+    let have = cards.filter(c => c.year === 2026);
+
+    // Fehlende Karten bestimmen
+    let missing = all2026.filter(card =>
+      !have.some(h => h.name === card.name)
+    );
+
+    if (missing.length === 0) {
+      return "Alle 2026‑Teilnehmer gesammelt! 🚀🌍";
+    }
+
+    return "Fehlende 2026‑Karten: " + missing.map(m => m.country).join(", ");
+  }
+},
+
+  {
+    id: "big5",
+    name: "🌍 BIG FIVE COMPLETED",
+    description: "Sammle Deutschland 🇩🇪, Frankreich 🇫🇷, Italien 🇮🇹, Spanien 🇪🇸 und UK 🇬🇧.",
+    check: cards => ["Germany","France","Italy","Spain","United Kingdom"]
+      .every(c => cards.map(x=>x.country).includes(c)),
+    missing: cards => {
+      let need = ["Germany","France","Italy","Spain","United Kingdom"];
+      let have = cards.map(c => c.country);
+      let missing = need.filter(n => !have.includes(n));
+      return missing.length === 0 ? "Komplett! 🌍" : "Fehlt: " + missing.join(", ");
+    }
+  },
+  {
+    id: "loyal",
+    name: "🇪🇺 LOYAL FANBASE",
+    description: "Mindestens 3 Karten aus demselben Land. ❤️",
+    check: cards => {
+      let count = {};
+      cards.forEach(c => count[c.country] = (count[c.country] || 0) + 1);
+      return Object.values(count).some(v => v >= 3);
+    },
+    missing: cards => "Sammle 3 Karten aus einem Land deiner Wahl 🇪🇺"
+  },
+  {
+    id: "year_specialist",
+    name: "📅 YEAR SPECIALIST",
+    description: "Mindestens 5 Karten aus demselben Jahr. 🗓️",
+    check: cards => {
+      let count = {};
+      cards.forEach(c => count[c.year] = (count[c.year] || 0) + 1);
+      return Object.values(count).some(v => v >= 5);
+    },
+    missing: cards => "Sammle 5 Karten aus einem Jahr deiner Wahl 📅"
+  },
+  {
+    id: "time_traveler",
+    name: "⏳ TIME TRAVELER",
+    description: "Mindestens eine Karte aus 2016, 2021 und 2026. 🕰️",
+    check: cards => {
+      let years = cards.map(c => c.year);
+      return years.includes(2016) && years.includes(2021) && years.includes(2026);
+    },
+    missing: cards => {
+      let need = [2016, 2021, 2026];
+      let have = cards.map(c => c.year);
+      let missing = need.filter(y => !have.includes(y));
+      return missing.length === 0 ? "Komplett! ⏳" : "Fehlt: " + missing.join(", ");
+    }
+  },
+
+  // ⭐ NEUE COMBO 1: NORTHERN EMPIRE
+  {
+    id: "northern_empire",
+    name: "🌌 NORTHERN EMPIRE",
+    description: "Sammle Skandinavien + Baltikum: 🇸🇪 🇳🇴 🇫🇮 🇪🇪 🇱🇻 🇱🇹",
+    check: cards => {
+      let need = ["Sweden","Norway","Finland","Estonia","Latvia","Lithuania"];
+      let have = cards.map(c => c.country);
+      return need.every(n => have.includes(n));
+    },
+    missing: cards => {
+      let need = ["Sweden","Norway","Finland","Estonia","Latvia","Lithuania"];
+      let have = cards.map(c => c.country);
+      let missing = need.filter(n => !have.includes(n));
+      return missing.length === 0 ? "Komplett! 🌌" : "Fehlt: " + missing.join(", ");
+    }
+  },
+
+  // ⭐ NEUE COMBO 2: ALL CATEGORIES MASTER
+  {
+    id: "all_categories",
+    name: "🌈 ALL CATEGORIES MASTER",
+    description: "Sammle alle 6 Kategorien! 🎶🔥💀💖🌀✨",
+    check: cards => {
+      let have = new Set(cards.map(c => c.category));
+      return have.size >= 6;
+    },
+    missing: cards => {
+      let have = new Set(cards.map(c => c.category));
+      return `Du hast ${have.size}/6 Kategorien 🌈`;
+    }
+  },
+  {
+  id: "legendary_winners",
+  name: "LEGENDARY WINNERS",
+  description: "Sammle ALLE Gewinner von 2006 bis 2025",
+
+
+  check: cards => {
+    let neededYears = [];
+    for (let y = 2006; y <= 2025; y++) {
+      if (y !== 2020) neededYears.push(y);
+    }
+
+    let years = cards.map(c => c.year);
+    let hasJJ = cards.some(c => c.year === 2025 && c.artist === "JJ");
+    let allYearsPresent = neededYears.every(y => years.includes(y));
+
+    return allYearsPresent && hasJJ;
+  },
+
+  missing: cards => {
+    let neededYears = [];
+    for (let y = 2006; y <= 2025; y++) {
+      if (y !== 2020) neededYears.push(y);
+    }
+
+    let years = cards.map(c => c.year);
+    let missingYears = neededYears.filter(y => !years.includes(y));
+    let hasJJ = cards.some(c => c.year === 2025 && c.artist === "JJ");
+
+    if (missingYears.length === 0 && hasJJ) {
+      return "Alle Gewinner gesammelt! 👑🌟";
+    }
+
+    let text = "";
+    if (missingYears.length > 0) text += "Fehlende Gewinner‑Jahre: " + missingYears.join(", ");
+    if (!hasJJ) text += (missingYears.length > 0 ? ", " : "") + " 2025";
+
+    return text;
+  }
+}
+
+
+];
+
+function checkCombos() {
+  let combosDiv = document.getElementById("combos");
+  combosDiv.innerHTML = "";
+
+  comboList.forEach(combo => {
+    let unlocked = combo.check(collection);
+    let alreadyUnlocked = unlockedCombos.includes(combo.id);
+
+    // UI anzeigen
+    combosDiv.innerHTML += `
+      <div style="margin-bottom:8px; padding:6px; border-radius:6px;
+        background:${unlocked ? '#0f04' : '#0003'};">
+        <strong>${unlocked ? "✅" : "❌"} ${combo.name}</strong><br>
+        <small>${combo.description}</small><br>
+        <small style="opacity:0.8;">${combo.missing(collection)}</small>
+      </div>
+    `;
+
+    // Belohnung vergeben, wenn NEU freigeschaltet
+    if (unlocked && !alreadyUnlocked) {
+      unlockedCombos.push(combo.id);
+      saveUnlockedCombos();
+
+      giveLegendaryReward(combo.name);
+    }
+  });
+}
+
+
+
+
+function updateTimer() {
+  let timerDiv = document.getElementById("timer");
+  let lastOpen = localStorage.getItem("lastPackTime");
+
+  if (!lastOpen) {
+    timerDiv.innerText = "🎁 Pack bereit!";
+    return;
+  }
+
+  let diff = Date.now() - lastOpen;
+  let remaining = 60 * 60 * 1000 - diff;
+
+  if (remaining <= 0) {
+    timerDiv.innerText = "🎁 Pack bereit!";
+    return;
+  }
+
+  let hours = Math.floor(remaining / (1000 * 60 * 60));
+  let minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+
+  timerDiv.innerText = "⏳ Nächster Pack in " + hours + "h " + minutes + "min";
+  let button = document.getElementById("drawButton");
+
+	if (remaining > 0) {
+	  button.disabled = true;
+	  button.style.opacity = 0.5;
+	} else {
+	  button.disabled = false;
+	  button.style.opacity = 1;
+	}
+
+}
+function legendaryEffect() {
+  document.body.style.background = "gold";
+
+  setTimeout(() => {
+    document.body.style.background = "#111";
+  }, 300);
+}
+function getRandomCard() {
+  let rand = Math.random();
+  let rarity =
+    rand < 0.1 ? "legendary" :
+    rand < 0.4 ? "rare" :
+    "common";
+
+  let pool = cards.filter(c => c.rarity === rarity);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+
+function generateTrade() {
+  if (selectedCardIndex === null || selectedCardIndex === undefined) {
+    document.getElementById("tradeStatus").innerText =
+      "❌ Bitte wähle zuerst eine Karte aus!";
+    return;
+  }
+
+  // 🔥 Die richtige Karte holen
+  let card = collection[selectedCardIndex];
+
+  // 🔥 Code erstellen
+  let code = encodeUTF8(card);
+
+
+  document.getElementById("tradeStatus").innerText =
+    "📤 Code erstellt für: " + card.name;
+
+  // 🔥 Code anzeigen
+  document.getElementById("tradeCodeBox").style.display = "block";
+  document.getElementById("tradeCodeBox").innerText = code;
+
+  document.getElementById("copyBtn").style.display = "inline-block";
+
+  // 🔥 Nur EIN Exemplar entfernen
+  collection.splice(selectedCardIndex, 1);
+
+  // 🔥 Auswahl zurücksetzen
+  selectedCardIndex = null;
+
+  // 🔥 Speichern
+  localStorage.setItem("esc", JSON.stringify(collection));
+
+  render();
+}
+
+function importTrade() {
+  let code = document.getElementById("tradeInput").value;
+
+  try {
+    let card = decodeUTF8(code);
+
+    collection.push(card);
+    localStorage.setItem("esc", JSON.stringify(collection));
+
+    document.getElementById("tradeStatus").innerText =
+      "✅ Karte importiert: " + card.name;
+
+    // 🔥 Eingabefeld leeren
+    document.getElementById("tradeInput").value = "";
+
+    render();
+  } catch (e) {
+    console.error(e);
+    document.getElementById("tradeStatus").innerText =
+      "❌ Ungültiger Code!";
+  }
+}
+
+
+
+function copyTradeCode() {
+  let code = document.getElementById("tradeCodeBox").innerText;
+
+  navigator.clipboard.writeText(code).then(() => {
+    document.getElementById("tradeStatus").innerText =
+      "✅ Code kopiert!";
+  });
+}
+
+function encodeUTF8(obj) {
+  return btoa(new TextEncoder().encode(JSON.stringify(obj)).reduce((acc, byte) => acc + String.fromCharCode(byte), ""));
+}
+
+
+function decodeUTF8(str) {
+  const binary = atob(str);
+  const bytes = new Uint8Array([...binary].map(ch => ch.charCodeAt(0)));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+let collectionCollapsed = false;
+
+function toggleCollection() {
+  const wrapper = document.getElementById("collectionWrapper");
+  const arrow = document.getElementById("collectionArrow");
+
+  collectionCollapsed = !collectionCollapsed;
+
+  if (collectionCollapsed) {
+    wrapper.classList.add("collapsed");
+    arrow.textContent = "▲";
+  } else {
+    wrapper.classList.remove("collapsed");
+    arrow.textContent = "▼";
+  }
+}
+
+function saveUnlockedCombos() {
+  localStorage.setItem("unlockedCombos", JSON.stringify(unlockedCombos));
+}
+
+function getRandomLegendaryCard() {
+  let legendaryCards = cards.filter(c => c.rarity === "legendary");
+
+  if (legendaryCards.length === 0) {
+    console.warn("Keine legendary Karten definiert!");
+    return null;
+  }
+
+  return legendaryCards[Math.floor(Math.random() * legendaryCards.length)];
+}
+
+function giveCardToPlayer() {
+  let lunacard = cards.filter(c => c.rarity === "special");
+
+  if (lunacard.length === 0) {
+    console.warn("Keine Luna Karten definiert!");
+    return null;
+  }
+
+  return lunacard;
+}
+
+function giveLegendaryReward(comboName) {
+
+  let card; // ⭐ Wichtig: oben definieren, damit überall sichtbar
+
+  if (comboName === "LEGENDARY WINNERS") {
+    card = giveCardToPlayer();   // ⭐ Spezialkarte
+  } else {
+    card = getRandomLegendaryCard();   // ⭐ normale Legendary
+  }
+
+  if (!card) return;
+
+  // Karte klonen, damit sie nicht referenziert wird
+  let newCard = JSON.parse(JSON.stringify(card));
+
+  collection.push(newCard);
+  localStorage.setItem("esc", JSON.stringify(collection));
+
+  showBonusPopup(
+    "🎉 LEGENDARY BONUS!\n\n" +
+    "Combo: " + comboName + "\n" +
+    "Belohnung: ⭐⭐⭐\n" +
+    newCard.name + "\n" +
+    newCard.artist + "\n" +
+    newCard.country + " (" + newCard.year + ")"
+  );
+
+  // 🔥 Sammlung neu anzeigen
+  render();
+}
+
+function showBonusPopup(text) {
+  document.getElementById("bonusPopupText").innerText = text;
+
+  let btn = document.querySelector("#bonusPopup button");
+  btn.disabled = false;
+  btn.style.opacity = "1";
+  btn.style.pointerEvents = "auto";
+
+  document.getElementById("bonusPopup").style.display = "block";
+}
+
+
+
+window.closeBonusPopup = function () {
+  document.getElementById("bonusPopup").style.display = "none";
+};
+
+
+
+
+
+setInterval(updateTimer, 1000);
+updateTimer();
+render();
+
+
+</script>
+
+</body>
+</html>
