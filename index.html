@@ -82,6 +82,10 @@ button {
   margin-bottom: 20px;
 
 }
+.special {
+  border: 3px solid hotpink;
+  box-shadow: 0 0 20px hotpink;
+}
 
 .card:hover {
   transform: scale(1.05);
@@ -119,12 +123,13 @@ input {
 #collectionWrapper {
   overflow: hidden;
   transition: max-height 0.4s ease;
-  max-height: 2000px; /* groß genug für volle Sammlung */
+  max-height: none;
 }
 
 #collectionWrapper.collapsed {
   max-height: 0;
 }
+
 .cardImage {
   width: 100%;
   max-width: 250px;
@@ -243,7 +248,6 @@ const cards = [
 {name:"Superstar", artist:"SENHIT", country:"San Marino", year:2026, category:"pop", rarity:"rare", flag:"🇸🇲", image:"./img/san_marino.png"},
 {name:"Kraj Mene", artist:"Lavina", country:"Serbia", year:2026, category:"ballad", rarity:"common", flag:"🇷🇸", image:"./img/serbia.png"},
 {name:"Pray", artist:"Alicja", country:"Poland", year:2026, category:"ballad", rarity:"common", flag:"🇵🇱", image:"./img/poland.png"},
-{name:"Mother Nature", artist:"Juliette Blanc", country:"Luxembourg", year:2026, category:"ballad", rarity:"rare", flag:"🇱🇺", image:"./img/luxembourg.png"},
 {name:"Nova zora", artist:"Tamara Živković", country:"Montenegro", year:2026, category:"folk", rarity:"common", flag:"🇲🇪", image:"./img/montenegro.png"},
 {name:"Choke Me", artist:"Alexandra Căpitănescu", country:"Romania", year:2026, category:"rock", rarity:"rare", flag:"🇷🇴", image:"./img/romania.png"},
 {name:"Ya Ya Ya", artist:"Jonas Lovv", country:"Norway", year:2026, category:"electro", rarity:"common", flag:"🇳🇴", image:"./img/norway.png"},
@@ -692,11 +696,15 @@ function checkCombos() {
 function updateTimer() {
   let timerDiv = document.getElementById("timer");
   let lastOpen = localStorage.getItem("lastPackTime");
+  let button = document.getElementById("drawButton");
 
-  if (!lastOpen) {
-    timerDiv.innerText = "🎁 Pack bereit!";
-    return;
-  }
+	if (!lastOpen) {
+	  timerDiv.innerText = "🎁 Pack bereit!";
+	  button.disabled = false;
+	  button.style.opacity = 1;
+	  return;
+	}
+
 
   let diff = Date.now() - lastOpen;
   let remaining = 60 * 60 * 1000 - diff;
@@ -710,7 +718,6 @@ function updateTimer() {
   let minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
 
   timerDiv.innerText = "⏳ Nächster Pack in " + hours + "h " + minutes + "min";
-  let button = document.getElementById("drawButton");
 
 	if (remaining > 0) {
 	  button.disabled = true;
@@ -853,14 +860,13 @@ function getRandomLegendaryCard() {
 }
 
 function giveCardToPlayer() {
-  let lunacard = cards.filter(c => c.rarity === "special");
+  let lunaCard = cards.find(c => c.rarity === "special");
 
-  if (lunacard.length === 0) {
-    console.warn("Keine Luna Karten definiert!");
+  if (!lunaCard) {
+    console.warn("Keine Luna Karte definiert!");
     return null;
   }
-
-  return lunacard;
+  return lunaCard;
 }
 
 function giveLegendaryReward(comboName) {
